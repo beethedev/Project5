@@ -16,6 +16,8 @@ class ViewController: UITableViewController {
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(promptForAnswer))
         
+        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(startGame))
+        
         if let startWordsURL = Bundle.main.url(forResource: "start", withExtension: "txt"){
             if let startWords = try? String(contentsOf: startWordsURL){
                 allWords = startWords.components(separatedBy: "\n")
@@ -30,7 +32,7 @@ class ViewController: UITableViewController {
         
     }
     
-    func startGame() {
+    @objc func startGame() {
         title = allWords.randomElement()
         usedWords.removeAll(keepingCapacity: true)
         tableView.reloadData()
@@ -63,48 +65,53 @@ class ViewController: UITableViewController {
     func submit(_ answer: String) {
         let lowerAnswer = answer.lowercased()
         
-        let errorTitle: String
-        let errorContent: String
-        
-        if isPossible(word: lowerAnswer) {
-            if isOriginal(word: lowerAnswer) {
-                if isReal(word: lowerAnswer) {
-                    usedWords.insert(answer, at: 0)
+        //let errorTitle: String
+        // let errorContent: String
+        if isShort(word: lowerAnswer) {
+            if isPossible(word: lowerAnswer) {
+                if isOriginal(word: lowerAnswer) {
+                    if isReal(word: lowerAnswer) {
+                        usedWords.insert(lowerAnswer, at: 0)
                     
-                    let indexPath = IndexPath(row: 0, section: 0)
-                    tableView.insertRows(at: [indexPath], with: .automatic)
+                        let indexPath = IndexPath(row: 0, section: 0)
+                        tableView.insertRows(at: [indexPath], with: .automatic)
                     
-                    return
+                        return
+                    } else {
+                        showErrorMessage(errorMessage:"You just can't make them up, you know!" , errorTitle: "Word not recognised")
+                        // errorTitle = "Word not recognised"
+                        // errorContent = "You just can't make them up, you know!"
+                    }
                 } else {
-                    errorTitle = "Word not recognised"
-                    errorContent = "You just can't make them up, you know!"
+                    showErrorMessage(errorMessage: "Be more original!", errorTitle:"Word already used" )
+                    // errorTitle = "Word already used"
+                    // errorContent = "Be more original!"
                 }
             } else {
-                errorTitle = "Word already used"
-                errorContent = "Be more original!"
+                guard let title = title else { return }
+                showErrorMessage(errorMessage: "You can't spell \(lowerAnswer) from \(title.lowercased()).", errorTitle: "Word not possible")
+                // errorTitle = "Word not possible"
+                // errorContent = "You can't spell that word from \(title.lowercased())."
             }
         } else {
-            guard let title = title else { return }
-            errorTitle = "Word not possible"
-            errorContent = "You can't spell that word from \(title.lowercased())."
+            showErrorMessage(errorMessage:"Word must have a minimum of three characters" , errorTitle: "Word too short")
         }
-        
-        let ac = UIAlertController(title: errorTitle, message: errorContent, preferredStyle: .alert)
-        ac.addAction(UIAlertAction(title: "OK", style: .default))
-        present(ac, animated: true)
     }
+        
     
     func isPossible(word: String) -> Bool {
         guard var tempWord = title?.lowercased() else { return false }
-        
-        for letter in word {
-            if let position = tempWord.firstIndex(of: letter) {
-                tempWord.remove(at: position)
-            } else {
-            return false
+        if word.lowercased() == title?.lowercased(){ return false } else {
+            for letter in word {
+                if let position = tempWord.firstIndex(of: letter) {
+                    tempWord.remove(at: position)
+                } else {
+                return false
+                }
             }
+            return true
         }
-        return true
+        
     }
     
     func isOriginal(word: String) -> Bool {
@@ -115,9 +122,23 @@ class ViewController: UITableViewController {
         let checker = UITextChecker()
         let range = NSRange(location: 0, length: word.utf16.count)
         let misspelledRange = checker.rangeOfMisspelledWord(in: word, range: range, startingAt: 0, wrap: false, language: "en")
-        return misspelledRange.location == NSNotFound
+            return misspelledRange.location == NSNotFound
+    }
+        
+    
+    func isShort(word: String) -> Bool {
+        let range = NSRange(location: 0, length: word.utf16.count)
+        if range.length < 3 {
+            return false
+        }
+        return true
+    }
+    
+    func showErrorMessage(errorMessage: String, errorTitle: String) {
+        let ac = UIAlertController(title: errorTitle, message: errorMessage, preferredStyle: .alert)
+        ac.addAction(UIAlertAction(title: "OK", style: .default))
+        present(ac, animated: true)
     }
 
 
 }
-
